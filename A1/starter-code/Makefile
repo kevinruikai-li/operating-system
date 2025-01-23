@@ -10,4 +10,5 @@ style: shell.c shell.h interpreter.c interpreter.h shellmemory.c shellmemory.h
 	$(FMT) $?
 
 clean: 
-	rm mysh; rm *.o
+	rm mysh; rm *.o; rm *~
+
