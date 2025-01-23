@@ -1,0 +1,6 @@
+Shell version 1.4 created December 2024
+Bad command: my_mkdir
+.
+..
+tata
+Bye!

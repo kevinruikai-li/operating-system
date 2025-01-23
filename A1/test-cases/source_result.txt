@@ -1,0 +1,6 @@
+Shell version 1.4 created December 2024
+good
+10
+20 bob alice toto xyz
+abc def lili
+Bye!

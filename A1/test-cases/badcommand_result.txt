@@ -1,0 +1,7 @@
+Shell version 1.4 created December 2024
+Unknown Command
+Bad command: File not found
+Bad command: my_mkdir
+Bad command: my_mkdir
+Bad command: my_cd
+Bye!
