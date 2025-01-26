@@ -11,7 +11,7 @@ int badcommand(){
     return 1;
 }
 
-// For run command only
+// For source command only
 int badcommandFileDoesNotExist(){
     printf("Bad command: File not found\n");
     return 3;
@@ -21,7 +21,7 @@ int help();
 int quit();
 int set(char* var, char* value);
 int print(char* var);
-int run(char* script);
+int source(char* script);
 int badcommandFileDoesNotExist();
 
 // Interpret commands and their arguments
@@ -55,9 +55,9 @@ int interpreter(char* command_args[], int args_size) {
         if (args_size != 2) return badcommand();
         return print(command_args[1]);
     
-    } else if (strcmp(command_args[0], "run") == 0) {
+    } else if (strcmp(command_args[0], "source") == 0) {
         if (args_size != 2) return badcommand();
-        return run(command_args[1]);
+        return source(command_args[1]);
     
     } else return badcommand();
 }
@@ -70,7 +70,7 @@ help			Displays all the commands\n \
 quit			Exits / terminates the shell with “Bye!”\n \
 set VAR STRING		Assigns a value to shell memory\n \
 print VAR		Displays the STRING assigned to VAR\n \
-run SCRIPT.TXT		Executes the file SCRIPT.TXT\n ";
+source SCRIPT.TXT	Executes the file SCRIPT.TXT\n ";
     printf("%s\n", help_string);
     return 0;
 }
@@ -97,7 +97,7 @@ int print(char *var) {
     return 0;
 }
 
-int run(char *script) {
+int source(char *script) {
     int errCode = 0;
     char line[MAX_USER_INPUT];
     FILE *p = fopen(script, "rt");  // the program is in a file
