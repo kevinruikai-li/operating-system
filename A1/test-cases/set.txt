@@ -1,7 +1,7 @@
 set x 10
 print x
-set x 20 bob alice toto xyz
+set x 20
 print x
-set y abc def lili
+set y abc
 print y
 quit
