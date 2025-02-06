@@ -3,6 +3,8 @@
 #include <string.h>
 #include "shellmemory.h"
 #include "shell.h"
+#include <dirent.h>
+#include <ctype.h>
 
 int MAX_ARGS_SIZE = 3;
 
@@ -144,5 +146,87 @@ int echo(char *arg) {
     } else {
         printf("%s\n", arg);
     }
+    return 0;
+}
+
+/* Helper:
+ * This comparator ensures:
+ *  - Names starting with a number will appear before lines starting with a letter.
+    - Names starting with a letter that appears earlier in the alphabet will appear before lines starting with a letter that appears later in the alphabet.
+    - Names starting with an uppercase letter will appear before lines starting with the same letter in lowercase.	
+ *  - Other characters will be sorted by their ASCII value.
+ */
+int my_compare(const void *a, const void *b) {
+    const char *s1 = *(const char **) a;
+    const char *s2 = *(const char **) b;
+    int i = 0;
+
+    // Character by character.
+    while (s1[i] && s2[i]) {
+        if (s1[i] == s2[i]) {
+            i++;
+            continue;
+        }
+        // see if digits or letters.
+        int isDigit1 = isdigit((unsigned char)s1[i]);
+        int isDigit2 = isdigit((unsigned char)s2[i]);
+        int isAlpha1 = isalpha((unsigned char)s1[i]);
+        int isAlpha2 = isalpha((unsigned char)s2[i]);
+
+        // digit comes first.
+        if (isDigit1 && isAlpha2)
+            return -1;
+        if (isAlpha1 && isDigit2)
+            return 1;
+
+        // If both are letters, compare in a case-insensitive manner first.
+        if (isAlpha1 && isAlpha2) {
+            char lower1 = tolower(s1[i]);
+            char lower2 = tolower(s2[i]);
+            if (lower1 == lower2) {
+                // uppercase comes before lowercase.
+                if (s1[i] != s2[i]) {
+                    return (s1[i] < s2[i]) ? -1 : 1;
+                }
+            } else {
+                return (lower1 < lower2) ? -1 : 1;
+            }
+        }
+        // For other cases, use normal ASCII ordering.
+        return (s1[i] < s2[i]) ? -1 : 1;
+    }
+    // If one string ended, the shorter one comes first.
+    if (s1[i] == s2[i])
+        return 0;
+    return (s1[i] == '\0') ? -1 : 1;
+}
+
+int my_ls() {
+    DIR *dp;
+    struct dirent *entry;
+    char *filenames[1024];
+    int count = 0;
+    
+    dp = opendir(".");
+    if (dp == NULL) {
+        return -1;
+    }
+    
+    // Read all directory entries.
+    while ((entry = readdir(dp)) != NULL) {
+        filenames[count] = strdup(entry->d_name);
+        count++;
+    }
+    closedir(dp);
+    
+    // Sort the names using comparator.
+    qsort(filenames, count, sizeof(char *), my_compare);
+    
+    // Print each name on a separate line.
+    for (int i = 0; i < count; i++) {
+        printf("%s\n", filenames[i]);
+        free(filenames[i]);
+    }
+    
     return 0;
 }
