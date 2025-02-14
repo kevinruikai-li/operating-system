@@ -21,18 +21,18 @@ int main (int argc, char *argv[]) {
         userInput[i] = '\0';
     }
 
-    int interactive = isatty(STDIN_FILENO);
+    int interactive = isatty (STDIN_FILENO);
 
     //init shell memory
     mem_init ();
     while (1) {
         if (interactive) {
-            printf("%c ", prompt);
-            fflush(stdout);
+            printf ("%c ", prompt);
+            fflush (stdout);
         }
         // here you should check the unistd library 
         // so that you can find a way to not display $ in the batch mode
-        if (fgets(userInput, MAX_USER_INPUT - 1, stdin) == NULL) {
+        if (fgets (userInput, MAX_USER_INPUT - 1, stdin) == NULL) {
             break;
         }
         errorCode = parseInput (userInput);
@@ -67,7 +67,6 @@ int parseInput (char inp[]) {
         if (inp[ix] == '\n' || inp[ix] == '\0') {
             break;
         }
-
         // extract a word
         for (wordlen = 0; !wordEnding (inp[ix]) && ix < 1000; ix++, wordlen++) {
             tmp[wordlen] = inp[ix];
@@ -82,7 +81,7 @@ int parseInput (char inp[]) {
         if (inp[ix] == ';') {
             errorCode = interpreter (words, w);
             if (errorCode == -1) {
-                return -1; // exit on error
+                return -1;      // exit on error
             }
             w = 0;
         }
