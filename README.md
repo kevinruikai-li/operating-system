@@ -1,11 +1,7 @@
 # Operating Systems Coursework (W25)
 
-There's nothing here yet!
+Krasimir Kirov 261118503
+Kevin Li 261120382
 
-### Registration Setup
-
-Fork the repository by clicking "fork" in the top right. Change the name if you like.
-Your team **must** have a fork to work on --
-if you try to do your work on the instructor's original repo, nothing will work and you will inevitably fail.
-We will try to warn you if you attempt to register the instructor's repo for your team.
+Used the starter code from A1/starter-code
 
