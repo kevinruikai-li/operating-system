@@ -1,4 +1,4 @@
-set x f1 5 lines
+set x f1is5lines
 echo $x
 echo $x
 echo $x
