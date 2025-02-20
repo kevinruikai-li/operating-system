@@ -1,21 +1,21 @@
 Shell version 1.4 created December 2024
 
-f1 5 lines
-f1 5 lines
-f1 5 lines
-f1 5 lines
-f2 3 lines
-f2 3 lines
-f1 5 lines
-f1 5 lines
-f1 5 lines
-f1 5 lines
-f2 3 lines
-f2 3 lines
-f3 7 lines
-f3 7 lines
-f3 7 lines
-f3 7 lines
-f3 7 lines
-f3 7 lines
+f1is5lines
+f1is5lines
+f1is5lines
+f1is5lines
+f2is3lines
+f2is3lines
+f1is5lines
+f1is5lines
+f1is5lines
+f1is5lines
+f2is3lines
+f2is3lines
+f3is7lines
+f3is7lines
+f3is7lines
+f3is7lines
+f3is7lines
+f3is7lines
 Bye!
