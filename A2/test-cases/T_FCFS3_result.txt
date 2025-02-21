@@ -8,5 +8,5 @@ fA
 fA
 1
 2
-good luck
+goodluck
 Bye!
