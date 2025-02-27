@@ -34,7 +34,7 @@ int my_mkdir (char *dirname);
 int my_touch (char *filename);
 int my_cd (char *dirname);
 int run (char *command, char *arg);
-int exec(char *command_args[], int args_size);
+int exec (char *command_args[], int args_size);
 
 int badcommandFileDoesNotExist ();
 
@@ -108,8 +108,8 @@ int interpreter (char *command_args[], int args_size) {
                                      command_args[2]) : run (command_args[1],
                                                              NULL);
 
-    } else if (strcmp(command_args[0], "exec") == 0) {
-        return exec(command_args, args_size);
+    } else if (strcmp (command_args[0], "exec") == 0) {
+        return exec (command_args, args_size);
     } else
         return badcommand ();
 }
@@ -149,18 +149,18 @@ int print (char *var) {
     return 0;
 }
 
-int source(char *script) {
+int source (char *script) {
     int errCode = 0;
     ProgramMemory pm;
     pm.num_lines = 0;
-    
-    if (load_script(script, &pm) != 0) {
-        return badcommandFileDoesNotExist();
+
+    if (load_script (script, &pm) != 0) {
+        return badcommandFileDoesNotExist ();
     }
-    
-    init_ready_queue(&readyQueue);
-    
-    PCB *pcb = malloc(sizeof(PCB));
+
+    init_ready_queue (&readyQueue);
+
+    PCB *pcb = malloc (sizeof (PCB));
     if (!pcb) {
         return -1;
     }
@@ -169,13 +169,13 @@ int source(char *script) {
     pcb->num_lines = pm.num_lines;
     pcb->pc = 0;
     pcb->next = NULL;
-    
-    enqueue_ready_queue(&readyQueue, pcb);
-    
-    scheduler_run(&pm);
-    
-    cleanup_program_memory(&pm);
-    
+
+    enqueue_ready_queue (&readyQueue, pcb);
+
+    scheduler_run (&pm);
+
+    cleanup_program_memory (&pm);
+
     return errCode;
 }
 
@@ -356,13 +356,13 @@ int run (char *command, char *arg) {
 }
 
 // Helper to check if duplicates.
-int isDuplicate(const char *s1, const char *s2) {
-    return (strcmp(s1, s2) == 0);
+int isDuplicate (const char *s1, const char *s2) {
+    return (strcmp (s1, s2) == 0);
 }
 
-int exec(char *command_args[], int args_size) {
+int exec (char *command_args[], int args_size) {
     char *policy = command_args[args_size - 1];
-    
+
     int numScripts = args_size - 2;
 
     if (numScripts < 1 || numScripts > 3) {
@@ -371,7 +371,7 @@ int exec(char *command_args[], int args_size) {
 
     for (int i = 1; i < 1 + numScripts; i++) {
         for (int j = i + 1; j < 1 + numScripts; j++) {
-            if (isDuplicate(command_args[i], command_args[j])) {
+            if (isDuplicate (command_args[i], command_args[j])) {
                 return 1;
             }
         }
@@ -385,19 +385,18 @@ int exec(char *command_args[], int args_size) {
 
     for (int i = 0; i < numScripts; i++) {
         starts[i] = pm.num_lines;
-        if (load_script(command_args[i + 1], &pm) != 0) {
-            cleanup_program_memory(&pm);
+        if (load_script (command_args[i + 1], &pm) != 0) {
+            cleanup_program_memory (&pm);
             return 1;
         }
         lengths[i] = pm.num_lines - starts[i];
     }
 
-    init_ready_queue(&readyQueue);
-
+    PCB *pcbArray[3];
     for (int i = 0; i < numScripts; i++) {
-        PCB *pcb = malloc(sizeof(PCB));
+        PCB *pcb = malloc (sizeof (PCB));
         if (!pcb) {
-            cleanup_program_memory(&pm);
+            cleanup_program_memory (&pm);
             return 1;
         }
         pcb->pid = nextPID++;
@@ -405,13 +404,33 @@ int exec(char *command_args[], int args_size) {
         pcb->num_lines = lengths[i];
         pcb->pc = 0;
         pcb->next = NULL;
-
-        enqueue_ready_queue(&readyQueue, pcb);
+        pcbArray[i] = pcb;
     }
 
-    scheduler_run(&pm);
+    if (strcmp (policy, "SJF") == 0) {
+        for (int i = 0; i < numScripts - 1; i++) {
+            for (int j = i + 1; j < numScripts; j++) {
+                if (pcbArray[i]->num_lines > pcbArray[j]->num_lines) {
+                    PCB *temp = pcbArray[i];
+                    pcbArray[i] = pcbArray[j];
+                    pcbArray[j] = temp;
+                }
+            }
+        }
+    }
 
-    cleanup_program_memory(&pm);
+    init_ready_queue (&readyQueue);
+    for (int i = 0; i < numScripts; i++) {
+        enqueue_ready_queue (&readyQueue, pcbArray[i]);
+    }
+
+    if (strcmp (policy, "RR") == 0) {
+        scheduler_run_rr (&pm);
+    } else {
+        scheduler_run (&pm);
+    }
+
+    cleanup_program_memory (&pm);
 
     return 0;
 }

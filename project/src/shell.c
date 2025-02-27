@@ -5,7 +5,7 @@
 #include "shell.h"
 #include "interpreter.h"
 #include "shellmemory.h"
-#include <ctype.h>   
+#include <ctype.h>
 
 int parseInput (char ui[]);
 
@@ -111,4 +111,3 @@ int parseInput (char inp[]) {
     }
     return errorCode;
 }
-

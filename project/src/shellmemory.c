@@ -6,36 +6,37 @@
 
 #define MAX_PROGRAM_LINES 1000
 
-int load_script(const char *filename, ProgramMemory *pm) {
-    FILE *fp = fopen(filename, "r");
+int load_script (const char *filename, ProgramMemory * pm) {
+    FILE *fp = fopen (filename, "r");
     if (!fp) {
         return -1;
     }
 
-    
+
     char buffer[MAX_PROGRAM_LINES];
-    
-    while (fgets(buffer, sizeof(buffer), fp) != NULL && pm->num_lines < MAX_PROGRAM_LINES) {
-        buffer[strcspn(buffer, "\r\n")] = '\0';
-        int len = strlen(buffer);
-        char *line_copy = malloc(len + 1);
+
+    while (fgets (buffer, sizeof (buffer), fp) != NULL
+           && pm->num_lines < MAX_PROGRAM_LINES) {
+        buffer[strcspn (buffer, "\r\n")] = '\0';
+        int len = strlen (buffer);
+        char *line_copy = malloc (len + 1);
         if (!line_copy) {
-            fclose(fp);
+            fclose (fp);
             return -1;
         }
-        strcpy(line_copy, buffer);
-        
+        strcpy (line_copy, buffer);
+
         pm->lines[pm->num_lines] = line_copy;
         pm->num_lines++;
     }
-    
-    fclose(fp);
+
+    fclose (fp);
     return 0;
 }
 
-void cleanup_program_memory(ProgramMemory *pm) {
+void cleanup_program_memory (ProgramMemory * pm) {
     for (int i = 0; i < pm->num_lines; i++) {
-        free(pm->lines[i]);
+        free (pm->lines[i]);
         pm->lines[i] = NULL;
     }
     pm->num_lines = 0;
@@ -43,12 +44,12 @@ void cleanup_program_memory(ProgramMemory *pm) {
 
 ReadyQueue readyQueue;
 
-void init_ready_queue(ReadyQueue *rq) {
+void init_ready_queue (ReadyQueue * rq) {
     rq->head = NULL;
     rq->tail = NULL;
 }
 
-void enqueue_ready_queue(ReadyQueue *rq, PCB *pcb) {
+void enqueue_ready_queue (ReadyQueue * rq, PCB * pcb) {
     pcb->next = NULL;
     if (rq->tail == NULL) {
         rq->head = pcb;
@@ -59,30 +60,49 @@ void enqueue_ready_queue(ReadyQueue *rq, PCB *pcb) {
     }
 }
 
-PCB *dequeue_ready_queue(ReadyQueue *rq) {
+PCB *dequeue_ready_queue (ReadyQueue * rq) {
     if (rq->head == NULL)
         return NULL;
-    
+
     PCB *pcb = rq->head;
     rq->head = rq->head->next;
     if (rq->head == NULL)
         rq->tail = NULL;
-    
+
     pcb->next = NULL;
     return pcb;
 }
 
-void scheduler_run(ProgramMemory *pm) {
-    PCB *pcb = dequeue_ready_queue(&readyQueue);
-    
+void scheduler_run (ProgramMemory * pm) {
+    PCB *pcb = dequeue_ready_queue (&readyQueue);
+
     while (pcb != NULL) {
         while (pcb->pc < pcb->num_lines) {
             char *instruction = pm->lines[pcb->start + pcb->pc];
-            parseInput(instruction);
+            parseInput (instruction);
             pcb->pc++;
         }
-        free(pcb);
-        pcb = dequeue_ready_queue(&readyQueue);
+        free (pcb);
+        pcb = dequeue_ready_queue (&readyQueue);
+    }
+}
+
+void scheduler_run_rr (ProgramMemory * pm) {
+    PCB *pcb = dequeue_ready_queue (&readyQueue);
+    while (pcb != NULL) {
+        int instructionsRun = 0;
+        while (pcb->pc < pcb->num_lines && instructionsRun < 2) {
+            char *line = pm->lines[pcb->start + pcb->pc];
+            parseInput (line);
+            pcb->pc++;
+            instructionsRun++;
+        }
+        if (pcb->pc < pcb->num_lines) {
+            enqueue_ready_queue (&readyQueue, pcb);
+        } else {
+            free (pcb);
+        }
+        pcb = dequeue_ready_queue (&readyQueue);
     }
 }
 
