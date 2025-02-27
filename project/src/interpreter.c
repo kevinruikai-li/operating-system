@@ -9,7 +9,8 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-int MAX_ARGS_SIZE = 3;
+int MAX_ARGS_SIZE = 5;
+static int nextPID = 1;
 
 int badcommand () {
     printf ("Unknown Command\n");
@@ -33,6 +34,8 @@ int my_mkdir (char *dirname);
 int my_touch (char *filename);
 int my_cd (char *dirname);
 int run (char *command, char *arg);
+int exec(char *command_args[], int args_size);
+
 int badcommandFileDoesNotExist ();
 
 // Interpret commands and their arguments
@@ -105,6 +108,8 @@ int interpreter (char *command_args[], int args_size) {
                                      command_args[2]) : run (command_args[1],
                                                              NULL);
 
+    } else if (strcmp(command_args[0], "exec") == 0) {
+        return exec(command_args, args_size);
     } else
         return badcommand ();
 }
@@ -144,28 +149,33 @@ int print (char *var) {
     return 0;
 }
 
-int source (char *script) {
+int source(char *script) {
     int errCode = 0;
-    char line[MAX_USER_INPUT];
-    FILE *p = fopen (script, "rt");     // the program is in a file
-
-    if (p == NULL) {
-        return badcommandFileDoesNotExist ();
+    ProgramMemory pm;
+    pm.num_lines = 0;
+    
+    if (load_script(script, &pm) != 0) {
+        return badcommandFileDoesNotExist();
     }
-
-    fgets (line, MAX_USER_INPUT - 1, p);
-    while (1) {
-        errCode = parseInput (line);    // which calls interpreter()
-        memset (line, 0, sizeof (line));
-
-        if (feof (p)) {
-            break;
-        }
-        fgets (line, MAX_USER_INPUT - 1, p);
+    
+    init_ready_queue(&readyQueue);
+    
+    PCB *pcb = malloc(sizeof(PCB));
+    if (!pcb) {
+        return -1;
     }
-
-    fclose (p);
-
+    pcb->pid = 1;
+    pcb->start = 0;
+    pcb->num_lines = pm.num_lines;
+    pcb->pc = 0;
+    pcb->next = NULL;
+    
+    enqueue_ready_queue(&readyQueue, pcb);
+    
+    scheduler_run(&pm);
+    
+    cleanup_program_memory(&pm);
+    
     return errCode;
 }
 
@@ -342,5 +352,66 @@ int run (char *command, char *arg) {
             execlp (command, command, arg, (char *) NULL);
         }
     }
+    return 0;
+}
+
+// Helper to check if duplicates.
+int isDuplicate(const char *s1, const char *s2) {
+    return (strcmp(s1, s2) == 0);
+}
+
+int exec(char *command_args[], int args_size) {
+    char *policy = command_args[args_size - 1];
+    
+    int numScripts = args_size - 2;
+
+    if (numScripts < 1 || numScripts > 3) {
+        return 1;
+    }
+
+    for (int i = 1; i < 1 + numScripts; i++) {
+        for (int j = i + 1; j < 1 + numScripts; j++) {
+            if (isDuplicate(command_args[i], command_args[j])) {
+                return 1;
+            }
+        }
+    }
+
+    ProgramMemory pm;
+    pm.num_lines = 0;
+
+    int starts[3];
+    int lengths[3];
+
+    for (int i = 0; i < numScripts; i++) {
+        starts[i] = pm.num_lines;
+        if (load_script(command_args[i + 1], &pm) != 0) {
+            cleanup_program_memory(&pm);
+            return 1;
+        }
+        lengths[i] = pm.num_lines - starts[i];
+    }
+
+    init_ready_queue(&readyQueue);
+
+    for (int i = 0; i < numScripts; i++) {
+        PCB *pcb = malloc(sizeof(PCB));
+        if (!pcb) {
+            cleanup_program_memory(&pm);
+            return 1;
+        }
+        pcb->pid = nextPID++;
+        pcb->start = starts[i];
+        pcb->num_lines = lengths[i];
+        pcb->pc = 0;
+        pcb->next = NULL;
+
+        enqueue_ready_queue(&readyQueue, pcb);
+    }
+
+    scheduler_run(&pm);
+
+    cleanup_program_memory(&pm);
+
     return 0;
 }

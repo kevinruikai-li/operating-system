@@ -5,6 +5,7 @@
 #include "shell.h"
 #include "interpreter.h"
 #include "shellmemory.h"
+#include <ctype.h>   
 
 int parseInput (char ui[]);
 
@@ -50,44 +51,64 @@ int wordEnding (char c) {
     return c == '\0' || c == '\n' || c == ' ' || c == ';';
 }
 
+// Solution from the A1 published by TAs
 int parseInput (char inp[]) {
     char tmp[200], *words[100];
     int ix = 0, w = 0;
     int wordlen;
-    int errorCode;
+    int errorCode = 0;
 
-    // iterate through instruction(s)
+    // This function probably isn't the best place to handle chains.
+    // That is, if we really wanted to implement relatively complex
+    // syntax like that of bash, we should really just tokenize everything,
+    // send the ';' as a separate word to the interpreter, and let the
+    // interpreter sort it out later.
+    // But for this simple shell, the interpreter's job is really only to be
+    // command dispatch, and this function is really acting as a complete
+    // parser rather than just a tokenizer. So we'll handle it here.
+
     while (inp[ix] != '\n' && inp[ix] != '\0' && ix < 1000) {
         // skip white spaces
-        while (inp[ix] == ' ' && ix < 1000) {
-            ix++;
-        }
+        for (; isspace (inp[ix]) && inp[ix] != '\n' && ix < 1000; ix++);
 
-        // check for end of instruction
-        if (inp[ix] == '\n' || inp[ix] == '\0') {
+        // If the next character is a semicolon,
+        // we should run what we have so far.
+        if (inp[ix] == ';')
             break;
-        }
+
         // extract a word
         for (wordlen = 0; !wordEnding (inp[ix]) && ix < 1000; ix++, wordlen++) {
             tmp[wordlen] = inp[ix];
         }
 
-        // store word
-        tmp[wordlen] = '\0';
-        words[w] = strdup (tmp);
-        w++;
-
-        // check for end of chained instruction
-        if (inp[ix] == ';') {
-            errorCode = interpreter (words, w);
-            if (errorCode == -1) {
-                return -1;      // exit on error
-            }
-            w = 0;
+        if (wordlen > 0) {
+            tmp[wordlen] = '\0';
+            words[w] = strdup (tmp);
+            w++;
+            if (inp[ix] == '\0')
+                break;
+        } else {
+            break;
         }
-
-        ix++;
     }
-    errorCode = interpreter (words, w);
+    // Ignore commands that contain no (meaningful) input by only calling the
+    // interpreter if actually found words.
+    if (w > 0) {
+        errorCode = interpreter (words, w);
+        for (size_t i = 0; i < w; ++i) {
+            free (words[i]);
+        }
+    }
+    if (inp[ix] == ';') {
+        // handle the next command in the chain by recursing
+        // the parser. We could equivalently wrap all of the work above
+        // in a while loop, but this makes it clearer what's going on.
+        // Additionally, a modern compiler is more than smart enough to
+        // turn this into a loop for us! Try adding -O2 to the CFLAGS in
+        // the Makefile and then read the assembly we get.
+        // Or you might be interested in godbolt.org.
+        return parseInput (&inp[ix + 1]);
+    }
     return errorCode;
 }
+
