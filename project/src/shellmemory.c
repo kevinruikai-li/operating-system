@@ -106,6 +106,83 @@ void scheduler_run_rr (ProgramMemory * pm) {
     }
 }
 
+// Helper for scheduler_run_aging
+void age_ready_queue (ReadyQueue * rq, int exceptPid) {
+    for (PCB * cur = rq->head; cur; cur = cur->next) {
+        if (cur->pid != exceptPid && cur->job_length_score > 0) {
+            cur->job_length_score--;
+        }
+    }
+}
+
+// Helper for scheduler_run_aging
+void sorted_enqueue_by_score (ReadyQueue * rq, PCB * newPCB) {
+    newPCB->next = NULL;
+
+    if (rq->head == NULL ||
+        newPCB->job_length_score <= rq->head->job_length_score) {
+
+        newPCB->next = rq->head;
+        rq->head = newPCB;
+
+        if (rq->tail == NULL) {
+            rq->tail = newPCB;
+        }
+        return;
+    }
+
+    PCB *prev = rq->head;
+    while (prev->next != NULL &&
+           prev->next->job_length_score <= newPCB->job_length_score) {
+        prev = prev->next;
+    }
+
+    newPCB->next = prev->next;
+    prev->next = newPCB;
+    if (newPCB->next == NULL) {
+        rq->tail = newPCB;
+    }
+}
+
+void scheduler_run_aging (ProgramMemory * pm) {
+    PCB *pcb = dequeue_ready_queue (&readyQueue);
+
+    while (pcb != NULL) {
+        char *instruction = pm->lines[pcb->start + pcb->pc];
+        parseInput (instruction);
+        pcb->pc++;
+
+        if (pcb->pc >= pcb->num_lines) {
+            free (pcb);
+        } else {
+            age_ready_queue (&readyQueue, pcb->pid);
+
+            sorted_enqueue_by_score (&readyQueue, pcb);
+        }
+
+        pcb = dequeue_ready_queue (&readyQueue);
+    }
+}
+
+void scheduler_run_rr30 (ProgramMemory * pm) {
+    PCB *pcb = dequeue_ready_queue (&readyQueue);
+    while (pcb != NULL) {
+        int instructionsRun = 0;
+        while (pcb->pc < pcb->num_lines && instructionsRun < 30) {
+            char *line = pm->lines[pcb->start + pcb->pc];
+            parseInput (line);
+            pcb->pc++;
+            instructionsRun++;
+        }
+        if (pcb->pc < pcb->num_lines) {
+            enqueue_ready_queue (&readyQueue, pcb);
+        } else {
+            free (pcb);
+        }
+        pcb = dequeue_ready_queue (&readyQueue);
+    }
+}
+
 struct memory_struct {
     char *var;
     char *value;

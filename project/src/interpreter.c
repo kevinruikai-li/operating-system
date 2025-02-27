@@ -361,6 +361,12 @@ int isDuplicate (const char *s1, const char *s2) {
 }
 
 int exec (char *command_args[], int args_size) {
+    int background_mode = 0;
+    if (strcmp (command_args[args_size - 1], "#") == 0) {
+        background_mode = 1;
+        args_size--;
+    }
+
     char *policy = command_args[args_size - 1];
 
     int numScripts = args_size - 2;
@@ -403,6 +409,7 @@ int exec (char *command_args[], int args_size) {
         pcb->start = starts[i];
         pcb->num_lines = lengths[i];
         pcb->pc = 0;
+        pcb->job_length_score = pcb->num_lines;
         pcb->next = NULL;
         pcbArray[i] = pcb;
     }
@@ -410,7 +417,8 @@ int exec (char *command_args[], int args_size) {
     if (strcmp (policy, "SJF") == 0) {
         for (int i = 0; i < numScripts - 1; i++) {
             for (int j = i + 1; j < numScripts; j++) {
-                if (pcbArray[i]->num_lines > pcbArray[j]->num_lines) {
+                if (pcbArray[i]->job_length_score >
+                    pcbArray[j]->job_length_score) {
                     PCB *temp = pcbArray[i];
                     pcbArray[i] = pcbArray[j];
                     pcbArray[j] = temp;
@@ -420,17 +428,84 @@ int exec (char *command_args[], int args_size) {
     }
 
     init_ready_queue (&readyQueue);
-    for (int i = 0; i < numScripts; i++) {
-        enqueue_ready_queue (&readyQueue, pcbArray[i]);
+
+    if (strcmp (policy, "AGING") == 0) {
+        for (int i = 0; i < numScripts; i++) {
+            sorted_enqueue_by_score (&readyQueue, pcbArray[i]);
+        }
+    } else {
+        for (int i = 0; i < numScripts; i++) {
+            enqueue_ready_queue (&readyQueue, pcbArray[i]);
+        }
     }
 
-    if (strcmp (policy, "RR") == 0) {
+    if (!background_mode) {
+        if (strcmp (policy, "AGING") == 0) {
+            scheduler_run_aging (&pm);
+        } else if (strcmp (policy, "RR") == 0) {
+            scheduler_run_rr (&pm);
+        } else if (strcmp (policy, "RR30") == 0) {
+            scheduler_run_rr30 (&pm);
+        } else {
+            scheduler_run (&pm);
+        }
+
+        cleanup_program_memory (&pm);
+
+        return 0;
+    }
+
+    char buffer[200];
+    int batch_start = pm.num_lines;
+    while (fgets (buffer, sizeof (buffer), stdin) != NULL) {
+        buffer[strcspn (buffer, "\r\n")] = '\0';
+        int len = (int) strlen (buffer);
+        if (len > 0) {
+            if (pm.num_lines < MAX_PROGRAM_LINES) {
+                pm.lines[pm.num_lines] = malloc (len + 1);
+                strcpy (pm.lines[pm.num_lines], buffer);
+                pm.num_lines++;
+            }
+        }
+    }
+
+    int batch_length = pm.num_lines - batch_start;
+    if (batch_length > 0) {
+        PCB *batchPCB = malloc (sizeof (PCB));
+        if (!batchPCB) {
+            cleanup_program_memory (&pm);
+            return 1;
+        }
+        batchPCB->pid = nextPID++;
+        batchPCB->start = batch_start;
+        batchPCB->num_lines = batch_length;
+        batchPCB->pc = 0;
+        batchPCB->job_length_score = batch_length;
+        batchPCB->next = NULL;
+
+        if (batchPCB->pc < batchPCB->num_lines) {
+            char *line = pm.lines[batchPCB->start + batchPCB->pc];
+            parseInput (line);
+            batchPCB->pc++;
+        }
+
+        if (batchPCB->pc < batchPCB->num_lines) {
+            enqueue_ready_queue (&readyQueue, batchPCB);
+        } else {
+            free (batchPCB);
+            batchPCB = NULL;
+        }
+    }
+
+    if (strcmp (policy, "AGING") == 0) {
+        scheduler_run_aging (&pm);
+    } else if (strcmp (policy, "RR") == 0) {
         scheduler_run_rr (&pm);
+    } else if (strcmp (policy, "RR30") == 0) {
+        scheduler_run_rr30 (&pm);
     } else {
         scheduler_run (&pm);
     }
-
     cleanup_program_memory (&pm);
-
     return 0;
 }
