@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-int MAX_ARGS_SIZE = 5;
+int MAX_ARGS_SIZE = 8;
 static int nextPID = 1;
 
 int badcommand () {
