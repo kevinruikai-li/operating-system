@@ -106,63 +106,64 @@ void scheduler_run_rr (ProgramMemory * pm) {
     }
 }
 
-// Helper for scheduler_run_aging
-void age_ready_queue (ReadyQueue * rq, int exceptPid) {
-    for (PCB * cur = rq->head; cur; cur = cur->next) {
-        if (cur->pid != exceptPid && cur->job_length_score > 0) {
-            cur->job_length_score--;
-        }
-    }
-}
-
-// Helper for scheduler_run_aging
-void sorted_enqueue_by_score (ReadyQueue * rq, PCB * newPCB) {
-    newPCB->next = NULL;
-
-    if (rq->head == NULL ||
-        newPCB->job_length_score <= rq->head->job_length_score) {
-
-        newPCB->next = rq->head;
-        rq->head = newPCB;
-
-        if (rq->tail == NULL) {
-            rq->tail = newPCB;
-        }
+void sorted_enqueue_by_score (ReadyQueue * rq, PCB * pcb) {
+    pcb->next = NULL;
+    if (rq->head == NULL) {
+        rq->head = pcb;
+        rq->tail = pcb;
         return;
     }
-
-    PCB *prev = rq->head;
-    while (prev->next != NULL &&
-           prev->next->job_length_score <= newPCB->job_length_score) {
-        prev = prev->next;
+    PCB *prev = NULL;
+    PCB *curr = rq->head;
+    while (curr != NULL && curr->job_length_score <= pcb->job_length_score) {
+        prev = curr;
+        curr = curr->next;
     }
-
-    newPCB->next = prev->next;
-    prev->next = newPCB;
-    if (newPCB->next == NULL) {
-        rq->tail = newPCB;
+    if (prev == NULL) {
+        pcb->next = rq->head;
+        rq->head = pcb;
+    } else {
+        prev->next = pcb;
+        pcb->next = curr;
+        if (curr == NULL) {
+            rq->tail = pcb;
+        }
     }
 }
 
 void scheduler_run_aging (ProgramMemory * pm) {
-    PCB *pcb = dequeue_ready_queue (&readyQueue);
+    PCB *current = NULL;
 
-    while (pcb != NULL) {
-        char *instruction = pm->lines[pcb->start + pcb->pc];
-        parseInput (instruction);
-        pcb->pc++;
-
-        if (pcb->pc >= pcb->num_lines) {
-            free (pcb);
-        } else {
-            age_ready_queue (&readyQueue, pcb->pid);
-
-            sorted_enqueue_by_score (&readyQueue, pcb);
+    while (readyQueue.head != NULL || current != NULL) {
+        if (current == NULL) {
+            current = dequeue_ready_queue (&readyQueue);
+        }
+        if (current->pc < current->num_lines) {
+            char *instruction = pm->lines[current->start + current->pc];
+            parseInput (instruction);
+            current->pc++;
+        }
+        PCB *iter = readyQueue.head;
+        while (iter != NULL) {
+            if (iter->job_length_score > 0)
+                iter->job_length_score--;
+            iter = iter->next;
         }
 
-        pcb = dequeue_ready_queue (&readyQueue);
+        if (current->pc >= current->num_lines) {
+            free (current);
+            current = NULL;
+            continue;
+        }
+
+        if (readyQueue.head != NULL
+            && readyQueue.head->job_length_score < current->job_length_score) {
+            sorted_enqueue_by_score (&readyQueue, current);
+            current = NULL;
+        }
     }
 }
+
 
 void scheduler_run_rr30 (ProgramMemory * pm) {
     PCB *pcb = dequeue_ready_queue (&readyQueue);
