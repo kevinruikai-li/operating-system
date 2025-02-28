@@ -483,17 +483,19 @@ int exec (char *command_args[], int args_size) {
         batchPCB->job_length_score = batch_length;
         batchPCB->next = NULL;
 
-        if (batchPCB->pc < batchPCB->num_lines) {
+        int timeSlice = 2;
+        int instructionsRun = 0;
+        while (batchPCB->pc < batchPCB->num_lines
+               && instructionsRun < timeSlice) {
             char *line = pm.lines[batchPCB->start + batchPCB->pc];
             parseInput (line);
             batchPCB->pc++;
+            instructionsRun++;
         }
-
         if (batchPCB->pc < batchPCB->num_lines) {
             enqueue_ready_queue (&readyQueue, batchPCB);
         } else {
             free (batchPCB);
-            batchPCB = NULL;
         }
     }
 
