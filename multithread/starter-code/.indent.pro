@@ -1,0 +1,13 @@
+--no-tabs
+--indent-level4
+--brace-indent0
+--case-indentation4
+--line-length79
+--cuddle-else
+--cuddle-do-while
+--braces-on-if-line
+--braces-on-func-def-line
+--braces-on-struct-decl-line
+--dont-break-procedure-type
+-npcs
+-ppi 3
