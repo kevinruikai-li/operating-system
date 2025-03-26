@@ -1,2 +1,2 @@
-run prog8
+source prog8
 quit
