@@ -13,4 +13,4 @@ tc4 intention:
     testing exec command. This is the most complex test case.
 
 tc5 intention: 
-    testing run command.
+    testing source command.
