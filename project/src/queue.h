@@ -32,7 +32,15 @@
 
 // Has to be defined before including schedule_policy,
 // because schedule_policy.h requires this definition.
-struct queue;
+struct queue {
+    struct PCB *head;
+
+    // Why no tail? Simply put; there's only ever 4 items in our queue.
+    // Dereferencing 4 pointers is not so slow.
+    // On the other hand, properly implementing the bookkeeping for a tail
+    // pointer is headache-inducing!
+    //struct PCB *tail;
+};
 
 #include "schedule_policy.h"
 

@@ -4,6 +4,7 @@
 #include "shell.h" // MAX_USER_INPUT
 #include "shellmemory.h"
 #include "pcb.h"
+#include "queue.h"
 
 int pcb_has_next_instruction(struct PCB *pcb) {
     // have next if pc < line_count.
@@ -17,7 +18,7 @@ size_t pcb_next_instruction(struct PCB *pcb) {
     return i;
 }
 
-struct PCB *create_process(const char *filename) {
+struct PCB *create_process(const char *filename, struct queue *q, int process_exists) {
     // We have 2 main tasks:
     // load all the code in the script file into shellmemory, and
     // allocate+fill a PCB.
@@ -29,12 +30,19 @@ struct PCB *create_process(const char *filename) {
         perror("failed to open file for create_process");
         return NULL;
     }
-    struct PCB *pcb = create_process_from_FILE(script);
-    // Update the pcb name according to the filename we received.
-    pcb->name = strdup(filename);
+    struct PCB *pcb = create_process_from_FILE(script, filename, q, process_exists);
 }
 
-struct PCB *create_process_from_FILE(FILE *script) {
+struct PCB *find_existing_process(struct queue *q, const char *filename) {
+    struct PCB *current_pcb = q->head;
+    while (current_pcb) {
+        if (strcmp(current_pcb->name, filename) == 0) return current_pcb;
+        current_pcb = current_pcb->next;
+    }
+    return NULL;
+}
+
+struct PCB *create_process_from_FILE(FILE *script, const char *filename, struct queue *q, int process_exists) {
     // We can open the file, so we'll be making a process.
     struct PCB *pcb = malloc(sizeof(struct PCB));
 
@@ -43,8 +51,8 @@ struct PCB *create_process_from_FILE(FILE *script) {
     static pid fresh_pid = 1;
     pcb->pid = fresh_pid++;
 
-    // name should be the empty string, according to doc comment.
-    pcb->name = "";
+    // Update the pcb name according to the filename we received.
+    pcb->name = strdup(filename);
     // next should be NULL, according to doc comment.
     pcb->next = NULL;
 
@@ -66,24 +74,31 @@ struct PCB *create_process_from_FILE(FILE *script) {
     // It's unclear if we should assume it's also limited to 100 for this
     // purpose. If you did assume that, that's OK! We didn't.
     char linebuf[MAX_USER_INPUT];
-    while (!feof(script)) {
-        memset(linebuf, 0, sizeof(linebuf));
-        fgets(linebuf, MAX_USER_INPUT, script);
 
-        size_t index = allocate_line(linebuf);
-        // If we've run out of memory, clean up the partially-allocated
-        // pcb and return NULL.
-        if (index == (size_t)(-1)) {
-            free_pcb(pcb);
-            fclose(script);
-            return NULL;
-        }
+    if (process_exists) {
+        struct PCB *existing_pcb = find_existing_process(q, filename);
+        pcb->line_base = existing_pcb->line_base;
+        pcb->line_count = existing_pcb->line_count;
+    } else {
+        while (!feof(script)) {
+            memset(linebuf, 0, sizeof(linebuf));
+            fgets(linebuf, MAX_USER_INPUT, script);
 
-        if (pcb->line_count == 0) {
-            // do this on the first iteration only.
-            pcb->line_base = index;
+            size_t index = allocate_line(linebuf);
+            // If we've run out of memory, clean up the partially-allocated
+            // pcb and return NULL.
+            if (index == (size_t)(-1)) {
+                free_pcb(pcb);
+                fclose(script);
+                return NULL;
+            }
+
+            if (pcb->line_count == 0) {
+                // do this on the first iteration only.
+                pcb->line_base = index;
+            }
+            pcb->line_count++;
         }
-        pcb->line_count++;
     }
 
     // We're done with the file, don't forget to close it!

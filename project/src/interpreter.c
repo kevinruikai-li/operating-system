@@ -515,11 +515,7 @@ int my_exec(char *args[], int args_size) {
         // Obviously it doesn't hold in a real OS!
         // Having a proper process table, rather than only a schedule,
         // would solve that problem.
-        if (program_already_scheduled(q, args[n])) {
-            printf("Bad command: script named %s already scheduled\n", args[n]);
-            goto cleanup;
-        }
-        struct PCB *pcb = create_process(args[n]);
+        struct PCB *pcb = create_process(args[n], q, program_already_scheduled(q, args[n]));
         if (!pcb) {
             printf("Failed to create process\n");
             goto cleanup;
@@ -532,7 +528,7 @@ int my_exec(char *args[], int args_size) {
         // exec call. Therefore, we're entering background mode.
 
         // add the rest of the input to a new program:
-        struct PCB *pcb = create_process_from_FILE(stdin);
+        struct PCB *pcb = create_process_from_FILE(stdin, "", NULL, false);
         if (!pcb) {
             printf("Failed to create STDIN process\n");
             goto cleanup;

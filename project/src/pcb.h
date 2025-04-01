@@ -1,6 +1,7 @@
 #pragma once
 #include <stddef.h>
 #include <stdio.h> // FILE
+#include "queue.h"
 
 typedef size_t pid;
 
@@ -54,10 +55,10 @@ size_t pcb_next_instruction(struct PCB *pcb);
 //   1. Allocates a new PCB
 //   2. Loads the code from the script file into shellmemory
 //   3. Does NOT enqueue the PCB to any scheduling queue (next is NULL)
-struct PCB *create_process(const char *filename);
+struct PCB *create_process(const char *filename, struct queue *q, int process_exists);
 // Like create_process, but takes a FILE* directly.
 // Ownership of the FILE* is taken and it will be closed.
-struct PCB *create_process_from_FILE(FILE *f);
+struct PCB *create_process_from_FILE(FILE *script, const char *filename, struct queue *q, int process_exists);
 // Cleanup a process:
 //   1. Free all shellmemory used by the process code
 //   2. Free the PCB

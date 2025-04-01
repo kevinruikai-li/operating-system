@@ -4,16 +4,6 @@
 #include "pcb.h"
 #include "queue.h"
 
-struct queue {
-    struct PCB *head;
-
-    // Why no tail? Simply put; there's only ever 4 items in our queue.
-    // Dereferencing 4 pointers is not so slow.
-    // On the other hand, properly implementing the bookkeeping for a tail
-    // pointer is headache-inducing!
-    //struct PCB *tail;
-};
-
 // INVARIANT:
 // If a PCB is not currently on the queue, its next pointer is NULL.
 
