@@ -7,6 +7,11 @@
 #define true 1
 #define false 0
 
+int FRAME_STORE_SIZE = FRAMESIZE;
+int VAR_STORE_SIZE = VARMEMSIZE;
+int *frame_allocation_table = NULL;
+
+
 // ---------------------
 // Line memory for program lines; for part 2.
 // ---------------------
@@ -17,10 +22,6 @@
 // lines.
 // When a line is saved, it should be copied. This way, it can be saved from
 // a stack-allocated buffer without fear of losing it when the buffer is freed.
-struct program_line {
-    int allocated; // for sanity-checking
-    char *line;
-};
 
 struct program_line linememory[MEM_SIZE];
 
@@ -149,15 +150,60 @@ int match(char *model, char *var) {
 
 // Shell memory functions
 
-void mem_init(){
+struct frame_user **frame_users;
+int *num_users_per_frame;
+
+void init_frame_store(int framesize) {
+    FRAME_STORE_SIZE = framesize;
+    int num_frames = FRAME_STORE_SIZE / FRAME_SIZE;
+    
+    frame_allocation_table = malloc(num_frames * sizeof(int));
+    frame_users = malloc(num_frames * sizeof(struct frame_user *));
+    num_users_per_frame = malloc(num_frames * sizeof(int));
+    
+    for (int i = 0; i < num_frames; i++) {
+        frame_allocation_table[i] = 0;
+        frame_users[i] = NULL;
+        num_users_per_frame[i] = 0;
+    }
+}
+
+size_t find_free_frame() {
+    int num_frames = FRAME_STORE_SIZE / FRAME_SIZE;
+    for (size_t i = 0; i < num_frames; i++) {
+        if (frame_allocation_table[i] == 0) {
+            frame_allocation_table[i] = 1;
+            return i;
+        }
+    }
+    return (size_t)(-1);
+}
+
+void free_frame(size_t frame_num) {
+    frame_allocation_table[frame_num] = 0;
+}
+
+size_t allocate_line_at(size_t index, const char *line) {
+    if (index >= MEM_SIZE) {
+        return (size_t)(-1);
+    }
+    
+    if (linememory[index].allocated) {
+        free(linememory[index].line);
+    }
+    
+    linememory[index].allocated = true;
+    linememory[index].line = strdup(line);
+    return index;
+}
+
+void mem_init() {
     int i;
-    for (i = 0; i < MEM_SIZE; i++) {		
-        // Include a character that's impossible to type so that
-        // we don't mistake an empty entry for an entry named 'none'.
-        shellmemory[i].var   = "none\1";
+    for (i = 0; i < MEM_SIZE; i++) {
+        shellmemory[i].var = "none\1";
         shellmemory[i].value = "none";
     }
-
+    
     init_linemem();
 }
 

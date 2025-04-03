@@ -1,10 +1,11 @@
-CC=gcc
-#CFLAGS=-g -O0 #-DNDEBUG
-CFLAGS=-DNDEBUG
+CC = gcc
+CFLAGS = -O2
 
-mysh: shell.c interpreter.c shellmemory.c
-	$(CC) $(CFLAGS) -c shell.c interpreter.c shellmemory.c pcb.c queue.c schedule_policy.c
-	$(CC) $(CFLAGS) -o mysh shell.o interpreter.o shellmemory.o pcb.o queue.o schedule_policy.o
+mysh: shell.o interpreter.o shellmemory.o pcb.o queue.o schedule_policy.o
+	$(CC) $(CFLAGS) -o $@ $^
 
-clean: 
-	rm mysh; rm *.o
+%.o: %.c
+	$(CC) $(CFLAGS) -DFRAMESIZE=$(framesize) -DVARMEMSIZE=$(varmemsize) -c $<
+
+clean:
+	rm -f mysh *.o

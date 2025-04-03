@@ -9,7 +9,10 @@
 
 // Start of everything
 int main(int argc, char *argv[]) {
-    printf("Shell version 1.4 created December 2024\n\n");
+    printf("Frame Store Size = %d; Variable Store Size = %d\n\n", 
+        FRAME_STORE_SIZE, VAR_STORE_SIZE);
+
+    init_frame_store(FRAME_STORE_SIZE);
 
     char prompt = '$';  				// Shell prompt
     char userInput[MAX_USER_INPUT];		// user's input stored here
@@ -28,7 +31,14 @@ int main(int argc, char *argv[]) {
         if (!batch_mode) {
             printf("%c ", prompt);
         }
-        fgets(userInput, MAX_USER_INPUT-1, stdin);
+        if (fgets(userInput, MAX_USER_INPUT-1, stdin) == NULL) {
+            if (feof(stdin)) {
+                clearerr(stdin);
+                memset(userInput, 0, sizeof(userInput));
+            } else {
+                exit(EXIT_FAILURE);
+            }
+        }
         errorCode = parseInput(userInput);
         if (errorCode == -1) exit(99); // ignore all other errors
 

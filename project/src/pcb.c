@@ -13,24 +13,125 @@ int pcb_has_next_instruction(struct PCB *pcb) {
 }
 
 size_t pcb_next_instruction(struct PCB *pcb) {
-    size_t i = pcb->line_base + pcb->pc;
+    size_t virtual_addr = pcb->pc;
+    size_t page_num = virtual_addr / FRAME_SIZE;
+    size_t offset = virtual_addr % FRAME_SIZE;
+    
+    if (pcb->page_table[page_num] == (size_t)(-1)) {
+        printf("Page fault!\n");
+        
+        size_t frame = find_free_frame();
+        
+        if (frame == (size_t)(-1)) {
+            frame = select_victim_frame();
+
+            printf("Victim page contents:\n");
+            for (size_t i = 0; i < FRAME_SIZE; i++) {
+                size_t line_index = frame * FRAME_SIZE + i;
+                if (linememory[line_index].allocated) {
+                    printf("%s", linememory[line_index].line);
+                }
+            }
+            printf("End of victim page contents.\n");
+            
+            invalidate_frame_users(frame);
+            
+            for (size_t i = 0; i < FRAME_SIZE; i++) {
+                free_line(frame * FRAME_SIZE + i);
+            }
+        }
+        
+        load_page(pcb, page_num, frame);
+        
+        return (size_t)(-1);
+    }
+
+    size_t frame_num = pcb->page_table[page_num];
+    size_t physical_addr = frame_num * FRAME_SIZE + offset;
+    
     pcb->pc++;
-    return i;
+    
+    return physical_addr;
 }
 
 struct PCB *create_process(const char *filename, struct queue *q, int process_exists) {
-    // We have 2 main tasks:
-    // load all the code in the script file into shellmemory, and
-    // allocate+fill a PCB.
-
-    // We don't want to allocate a PCB until we know we actually need one,
-    // so let's first make sure we can open the file.
     FILE *script = fopen(filename, "rt");
     if (!script) {
         perror("failed to open file for create_process");
         return NULL;
     }
-    struct PCB *pcb = create_process_from_FILE(script, filename, q, process_exists);
+    
+    struct PCB *pcb = malloc(sizeof(struct PCB));
+    static pid fresh_pid = 1;
+    pcb->pid = fresh_pid++;
+    pcb->name = strdup(filename);
+    pcb->next = NULL;
+    pcb->pc = 0;
+    pcb->backing_file = strdup(filename);
+    
+    if (process_exists) {
+        struct PCB *existing_pcb = find_existing_process(q, filename);
+        
+        pcb->page_count = existing_pcb->page_count;
+        pcb->page_table = malloc(pcb->page_count * sizeof(size_t));
+        
+        for (size_t i = 0; i < pcb->page_count; i++) {
+            pcb->page_table[i] = existing_pcb->page_table[i];
+        }
+
+        pcb->line_base = existing_pcb->line_base;
+        pcb->line_count = existing_pcb->line_count;
+    } else {
+        char linebuf[MAX_USER_INPUT];
+        size_t line_count = 0;
+        
+        while (!feof(script)) {
+            if (fgets(linebuf, MAX_USER_INPUT, script) != NULL) {
+                line_count++;
+            }
+        }
+        
+        pcb->page_count = (line_count + FRAME_SIZE - 1) / FRAME_SIZE;
+        pcb->page_table = malloc(pcb->page_count * sizeof(size_t));
+
+        for (size_t i = 0; i < pcb->page_count; i++) {
+            pcb->page_table[i] = (size_t)(-1);
+        }
+        
+        rewind(script);
+        
+        size_t pages_to_load = (pcb->page_count < 2) ? pcb->page_count : 2;
+        
+        for (size_t page = 0; page < pages_to_load; page++) {
+            size_t frame = find_free_frame();
+            if (frame == (size_t)(-1)) {
+                free_pcb(pcb);
+                fclose(script);
+                return NULL;
+            }
+            
+            pcb->page_table[page] = frame;
+            
+            register_frame_user(frame, pcb, page);
+
+            for (size_t i = 0; i < FRAME_SIZE; i++) {
+                if (feof(script)) break;
+                
+                memset(linebuf, 0, sizeof(linebuf));
+                if (fgets(linebuf, MAX_USER_INPUT, script) != NULL) {
+                    size_t line_index = frame * FRAME_SIZE + i;
+                    allocate_line_at(line_index, linebuf);
+                }
+            }
+        }
+        
+        pcb->line_base = 0;
+        pcb->line_count = line_count;
+    }
+    
+    pcb->duration = pcb->line_count;
+    fclose(script);
+    return pcb;
 }
 
 struct PCB *find_existing_process(struct queue *q, const char *filename) {
@@ -80,21 +181,14 @@ struct PCB *create_process_from_FILE(FILE *script, const char *filename, struct 
         pcb->line_base = existing_pcb->line_base;
         pcb->line_count = existing_pcb->line_count;
     } else {
-        while (!feof(script)) {
-            memset(linebuf, 0, sizeof(linebuf));
-            fgets(linebuf, MAX_USER_INPUT, script);
-
+        while (fgets(linebuf, MAX_USER_INPUT, script) != NULL) {
             size_t index = allocate_line(linebuf);
-            // If we've run out of memory, clean up the partially-allocated
-            // pcb and return NULL.
             if (index == (size_t)(-1)) {
                 free_pcb(pcb);
                 fclose(script);
                 return NULL;
             }
-
             if (pcb->line_count == 0) {
-                // do this on the first iteration only.
                 pcb->line_base = index;
             }
             pcb->line_count++;
@@ -111,13 +205,84 @@ struct PCB *create_process_from_FILE(FILE *script, const char *filename, struct 
 }
 
 void free_pcb(struct PCB *pcb) {
-    for (size_t ix = pcb->line_base; ix < pcb->line_base + pcb->line_count; ++ix) {
-        free_line(ix);
+    for (size_t i = 0; i < pcb->page_count; i++) {
+        size_t frame = pcb->page_table[i];
+        if (frame != (size_t)(-1)) {
+            for (size_t j = 0; j < FRAME_SIZE; j++) {
+                free_line(frame * FRAME_SIZE + j);
+            }
+            free_frame(frame);
+        }
     }
-    // Free the process name, but only if it's not the empty string.
-    // The empty name (for the shell input process) was not malloc'd.
+    
+    free(pcb->page_table);
+    
     if (strcmp("", pcb->name)) {
         free(pcb->name);
     }
     free(pcb);
+}
+
+void register_frame_user(size_t frame, struct PCB *pcb, size_t page) {
+    int n = num_users_per_frame[frame];
+
+    if (n == 0) {
+        frame_users[frame] = malloc(sizeof(struct frame_user));
+    } else {
+        frame_users[frame] = realloc(frame_users[frame], 
+                                     (n+1) * sizeof(struct frame_user));
+    }
+
+    frame_users[frame][n].pcb = pcb;
+    frame_users[frame][n].virtual_page = page;
+    num_users_per_frame[frame]++;
+}
+
+void invalidate_frame_users(size_t frame) {
+    for (int i = 0; i < num_users_per_frame[frame]; i++) {
+        struct PCB *pcb = frame_users[frame][i].pcb;
+        size_t page = frame_users[frame][i].virtual_page;
+        
+        pcb->page_table[page] = (size_t)(-1);
+    }
+    
+    free(frame_users[frame]);
+    frame_users[frame] = NULL;
+    num_users_per_frame[frame] = 0;
+}
+
+size_t select_victim_frame(void) {
+    int num_frames = FRAME_STORE_SIZE / FRAME_SIZE;
+    return rand() % num_frames;
+}
+
+void load_page(struct PCB *pcb, size_t page_num, size_t frame) {
+    FILE *file = fopen(pcb->backing_file, "rt");
+    if (!file) {
+        return;
+    }
+    
+    for (size_t i = 0; i < page_num * FRAME_SIZE; i++) {
+        char buf[MAX_USER_INPUT];
+        if (!fgets(buf, MAX_USER_INPUT, file)) {
+            break;
+        }
+    }
+    
+    for (size_t i = 0; i < FRAME_SIZE; i++) {
+        char buf[MAX_USER_INPUT];
+        
+        if (fgets(buf, MAX_USER_INPUT, file)) {
+            size_t line_index = frame * FRAME_SIZE + i;
+            allocate_line_at(line_index, buf);
+        } else {
+            break;
+        }
+    }
+    
+    pcb->page_table[page_num] = frame;
+
+    register_frame_user(frame, pcb, page_num);
+    
+    fclose(file);
 }

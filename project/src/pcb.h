@@ -5,6 +5,15 @@
 
 typedef size_t pid;
 
+
+struct frame_user {
+    struct PCB *pcb;
+    size_t virtual_page;
+};
+
+extern struct frame_user **frame_users;
+extern int *num_users_per_frame;
+
 // A process info struct.
 struct PCB {
     pid pid;
@@ -27,6 +36,9 @@ struct PCB {
     size_t line_base;
     size_t line_count;
 
+    size_t *page_table;
+    size_t page_count;
+
     // This field is used for SJF and aging, and should initially have
     // the same value as line_count.
     size_t duration;
@@ -45,6 +57,8 @@ struct PCB {
     // and manage it separately.
     // If this PCB is the tail of the queue, next is NULL.
     struct PCB *next;
+
+    char *backing_file;
 };
 
 // Returns non-zero iff there are more instructions to execute.
@@ -64,4 +78,9 @@ struct PCB *create_process_from_FILE(FILE *script, const char *filename, struct 
 //   2. Free the PCB
 void free_pcb(struct PCB *pcb);
 
+struct PCB *find_existing_process(struct queue *q, const char *filename);
 
+void register_frame_user(size_t frame, struct PCB *pcb, size_t page);
+void invalidate_frame_users(size_t frame);
+size_t select_victim_frame(void);
+void load_page(struct PCB *pcb, size_t page_num, size_t frame);
