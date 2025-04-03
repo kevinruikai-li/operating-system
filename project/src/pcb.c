@@ -16,43 +16,45 @@ size_t pcb_next_instruction(struct PCB *pcb) {
     size_t virtual_addr = pcb->pc;
     size_t page_num = virtual_addr / FRAME_SIZE;
     size_t offset = virtual_addr % FRAME_SIZE;
-    
-    if (pcb->page_table[page_num] == (size_t)(-1)) {
-        printf("Page fault!\n");
-        
-        size_t frame = find_free_frame();
-        
-        if (frame == (size_t)(-1)) {
-            frame = select_victim_frame();
+    size_t frame_num;
+    size_t physical_addr;
 
-            printf("Victim page contents:\n");
+    if (pcb->page_table[page_num] == (size_t)(-1)) {
+        
+        frame_num = find_free_frame();
+        
+        if (frame_num == (size_t)(-1)) {
+            frame_num = select_victim_frame();
+            printf("Page fault! Victim page contents:\n\n");
+            
             for (size_t i = 0; i < FRAME_SIZE; i++) {
-                size_t line_index = frame * FRAME_SIZE + i;
-                if (linememory[line_index].allocated) {
-                    printf("%s", linememory[line_index].line);
+                size_t line_idx = frame_num * FRAME_SIZE + i;
+                if (line_idx < MEM_SIZE && linememory[line_idx].allocated) {
+                    printf("%s", linememory[line_idx].line);
                 }
             }
-            printf("End of victim page contents.\n");
-            
-            invalidate_frame_users(frame);
+            printf("\nEnd of victim page contents.\n");
+
+            invalidate_frame_users(frame_num);
             
             for (size_t i = 0; i < FRAME_SIZE; i++) {
-                free_line(frame * FRAME_SIZE + i);
+                free_line(frame_num * FRAME_SIZE + i);
             }
         }
-        
-        load_page(pcb, page_num, frame);
-        
-        return (size_t)(-1);
-    }
 
-    size_t frame_num = pcb->page_table[page_num];
-    size_t physical_addr = frame_num * FRAME_SIZE + offset;
+        load_page(pcb, page_num, frame_num);
+    }
     
+    frame_num = pcb->page_table[page_num];
+    
+    last_used[frame_num] = time_counter++;
+
+    physical_addr = frame_num * FRAME_SIZE + offset;
     pcb->pc++;
     
     return physical_addr;
 }
+
 
 struct PCB *create_process(const char *filename, struct queue *q, int process_exists) {
     FILE *script = fopen(filename, "rt");
@@ -111,7 +113,7 @@ struct PCB *create_process(const char *filename, struct queue *q, int process_ex
             }
             
             pcb->page_table[page] = frame;
-            
+            last_used[frame] = time_counter++;
             register_frame_user(frame, pcb, page);
 
             for (size_t i = 0; i < FRAME_SIZE; i++) {
@@ -251,37 +253,31 @@ void invalidate_frame_users(size_t frame) {
     num_users_per_frame[frame] = 0;
 }
 
-size_t select_victim_frame(void) {
-    int num_frames = FRAME_STORE_SIZE / FRAME_SIZE;
-    return rand() % num_frames;
-}
-
 void load_page(struct PCB *pcb, size_t page_num, size_t frame) {
     FILE *file = fopen(pcb->backing_file, "rt");
     if (!file) {
         return;
     }
-    
+
     for (size_t i = 0; i < page_num * FRAME_SIZE; i++) {
         char buf[MAX_USER_INPUT];
         if (!fgets(buf, MAX_USER_INPUT, file)) {
             break;
         }
     }
-    
+
     for (size_t i = 0; i < FRAME_SIZE; i++) {
         char buf[MAX_USER_INPUT];
-        
         if (fgets(buf, MAX_USER_INPUT, file)) {
             size_t line_index = frame * FRAME_SIZE + i;
             allocate_line_at(line_index, buf);
         } else {
-            break;
+            allocate_line_at(frame * FRAME_SIZE + i, "");
         }
     }
-    
-    pcb->page_table[page_num] = frame;
 
+    frame_allocation_table[frame] = 1;
+    pcb->page_table[page_num] = frame;
     register_frame_user(frame, pcb, page_num);
     
     fclose(file);

@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdio.h>
 #include "shellmemory.h"
+#include "interpreter.h"
+#include <stdint.h>
 
 #define true 1
 #define false 0
@@ -10,6 +12,9 @@
 int FRAME_STORE_SIZE = FRAMESIZE;
 int VAR_STORE_SIZE = VARMEMSIZE;
 int *frame_allocation_table = NULL;
+
+size_t *last_used = NULL;
+size_t time_counter = 0;
 
 
 // ---------------------
@@ -161,11 +166,28 @@ void init_frame_store(int framesize) {
     frame_users = malloc(num_frames * sizeof(struct frame_user *));
     num_users_per_frame = malloc(num_frames * sizeof(int));
     
+    last_used = malloc(num_frames * sizeof(size_t));
+    time_counter = 1;
+    
     for (int i = 0; i < num_frames; i++) {
         frame_allocation_table[i] = 0;
         frame_users[i] = NULL;
         num_users_per_frame[i] = 0;
+        last_used[i] = 0;
     }
+}
+
+size_t select_victim_frame(void) {
+    size_t num_frames = FRAME_STORE_SIZE / FRAME_SIZE;
+    size_t lru_frame = 0;
+    size_t min_time = UINT64_MAX;
+    for (size_t i = 0; i < num_frames; i++) {
+        if (frame_allocation_table[i] && last_used[i] < min_time) {
+            min_time = last_used[i];
+            lru_frame = i;
+        }
+    }
+    return lru_frame;
 }
 
 size_t find_free_frame() {

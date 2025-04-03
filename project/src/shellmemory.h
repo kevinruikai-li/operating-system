@@ -5,6 +5,9 @@ extern int FRAME_STORE_SIZE;
 extern int VAR_STORE_SIZE;
 extern int *frame_allocation_table;
 
+extern size_t *last_used;
+extern size_t time_counter;
+
 extern struct frame_user **frame_users;
 extern int *num_users_per_frame;
 
@@ -29,3 +32,5 @@ void init_frame_store(int framesize);
 size_t find_free_frame(void);
 void free_frame(size_t frame_num);
 size_t allocate_line_at(size_t index, const char *line);
+
+size_t select_victim_frame(void);
