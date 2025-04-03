@@ -167,7 +167,7 @@ void init_frame_store(int framesize) {
     num_users_per_frame = malloc(num_frames * sizeof(int));
     
     last_used = malloc(num_frames * sizeof(size_t));
-    time_counter = 1;
+    time_counter = 0;
     
     for (int i = 0; i < num_frames; i++) {
         frame_allocation_table[i] = 0;

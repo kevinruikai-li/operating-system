@@ -272,7 +272,7 @@ void load_page(struct PCB *pcb, size_t page_num, size_t frame) {
             size_t line_index = frame * FRAME_SIZE + i;
             allocate_line_at(line_index, buf);
         } else {
-            allocate_line_at(frame * FRAME_SIZE + i, "");
+            break;
         }
     }
 
