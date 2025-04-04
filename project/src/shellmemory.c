@@ -117,7 +117,13 @@ void free_line(size_t index) {
 // Return a const pointer to ensure the caller doesn't do something horrific,
 // like try to free it.
 const char *get_line(size_t index) {
-    assert(linememory[index].allocated);
+    if (index >= FRAME_STORE_SIZE) {
+        return NULL;
+    }
+
+    if (!linememory[index].allocated) {
+        return NULL;
+    }
     return linememory[index].line;
 }
 

@@ -384,24 +384,42 @@ void runSchedule(struct queue *q, const struct schedule_policy *policy) {
 }
 
 struct PCB *run_pcb_to_completion(struct PCB *pcb) {
-    while (pcb_has_next_instruction(pcb)) {
-        size_t instr = pcb_next_instruction(pcb);
-        parseInput(get_line(instr));
-    }
-    free_pcb(pcb);
-    return NULL;
+    if (!pcb) return NULL;
+
+   while (pcb_has_next_instruction(pcb)) {
+       size_t instr = pcb_next_instruction(pcb);
+
+       if (instr == (size_t)(-1)) {
+           continue;
+        }
+       const char* line_to_execute = get_line(instr);
+        if (line_to_execute == NULL) {
+            free_pcb(pcb);
+            return NULL;
+       }
+       parseInput(line_to_execute);
+   }
+   free_pcb(pcb);
+   return NULL;
 }
 
 struct PCB *run_pcb_for_n_steps(struct PCB *pcb, size_t n) {
-    for (; n && pcb_has_next_instruction(pcb); --n) {
+    if (!pcb) return NULL;
+
+    for (; n > 0 && pcb_has_next_instruction(pcb); --n) {
         size_t instr = pcb_next_instruction(pcb);
         if (instr == (size_t)(-1)) {
             return pcb;
         }
-        
-        parseInput(get_line(instr));
+
+        const char* line_to_execute = get_line(instr);
+        if (line_to_execute == NULL) {
+            free_pcb(pcb);
+             return NULL;
+        }
+        parseInput(line_to_execute);
     }
-    
+
     if (pcb_has_next_instruction(pcb)) {
         return pcb;
     } else {
