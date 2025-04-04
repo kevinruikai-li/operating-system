@@ -56,27 +56,27 @@ struct queue {
 // we could add alloc/dealloc functions to the policy struct and replace
 // struct queue pointers with void pointers everywhere.
 
-struct queue *alloc_queue();
-void free_queue(struct queue *q);
+struct queue *alloc_queue ();
+void free_queue (struct queue *q);
 
 // To determine if processes have the same name, we need a way of scanning
 // the queue contents for a given filename.
-int program_already_scheduled(struct queue *q, char *name);
+int program_already_scheduled (struct queue *q, char *name);
 
 // This particular function is policy-agnostic, but its interface matches
 // the regular enqueue function just to keep things clean.
-void enqueue_ignoring_priority(struct queue *q, struct PCB *pcb);
+void enqueue_ignoring_priority (struct queue *q, struct PCB *pcb);
 
 // FCFS, RR
-void enqueue_fcfs(struct queue *q, struct PCB *pcb);
+void enqueue_fcfs (struct queue *q, struct PCB *pcb);
 // SJF
-void enqueue_sjf(struct queue *q, struct PCB *pcb);
+void enqueue_sjf (struct queue *q, struct PCB *pcb);
 // Aging
 // enqueue_sjf is almost correct, but we should leave the given pcb at the head
 // if it's tied with the current head, rather than doing an FCFS tiebreak.
-void enqueue_aging(struct queue *q, struct PCB *pcb);
+void enqueue_aging (struct queue *q, struct PCB *pcb);
 
 // FCFS, RR, SJF
-struct PCB *dequeue_typical(struct queue *q);
+struct PCB *dequeue_typical (struct queue *q);
 // Aging
-struct PCB *dequeue_aging(struct queue *q);
+struct PCB *dequeue_aging (struct queue *q);

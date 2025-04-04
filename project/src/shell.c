@@ -1,65 +1,66 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h> // isspace
+#include <ctype.h>              // isspace
 #include <string.h>
-#include <unistd.h> // isatty
+#include <unistd.h>             // isatty
 #include "shell.h"
 #include "interpreter.h"
 #include "shellmemory.h"
 
 // Start of everything
-int main(int argc, char *argv[]) {
-    printf("Frame Store Size = %d; Variable Store Size = %d\n\n", 
-        FRAME_STORE_SIZE, VAR_STORE_SIZE);
+int main (int argc, char *argv[]) {
+    printf ("Frame Store Size = %d; Variable Store Size = %d\n\n",
+            FRAME_STORE_SIZE, VAR_STORE_SIZE);
 
-    init_frame_store(FRAME_STORE_SIZE);
+    init_frame_store (FRAME_STORE_SIZE);
 
-    char prompt = '$';  				// Shell prompt
-    char userInput[MAX_USER_INPUT];		// user's input stored here
+    char prompt = '$';          // Shell prompt
+    char userInput[MAX_USER_INPUT];     // user's input stored here
     // batch_mode is true when a file was given.
-    int batch_mode = !isatty(STDIN_FILENO);
-    int errorCode = 0;					// zero means no error, default
+    int batch_mode = !isatty (STDIN_FILENO);
+    int errorCode = 0;          // zero means no error, default
 
     //init user input
     for (int i = 0; i < MAX_USER_INPUT; i++) {
         userInput[i] = '\0';
     }
-    
+
     //init shell memory
-    mem_init();
-    while(1) {
+    mem_init ();
+    while (1) {
         if (!batch_mode) {
-            printf("%c ", prompt);
+            printf ("%c ", prompt);
         }
-        if (fgets(userInput, MAX_USER_INPUT-1, stdin) == NULL) {
-            if (feof(stdin)) {
-                clearerr(stdin);
-                memset(userInput, 0, sizeof(userInput));
+        if (fgets (userInput, MAX_USER_INPUT - 1, stdin) == NULL) {
+            if (feof (stdin)) {
+                clearerr (stdin);
+                memset (userInput, 0, sizeof (userInput));
             } else {
-                exit(EXIT_FAILURE);
+                exit (EXIT_FAILURE);
             }
         }
-        errorCode = parseInput(userInput);
-        if (errorCode == -1) exit(99); // ignore all other errors
+        errorCode = parseInput (userInput);
+        if (errorCode == -1)
+            exit (99);          // ignore all other errors
 
-        if (feof(stdin)) {
+        if (feof (stdin)) {
             return 0;
         }
 
-        memset(userInput, 0, sizeof(userInput));
+        memset (userInput, 0, sizeof (userInput));
     }
 
     return 0;
 }
 
-int wordEnding(char c) {
+int wordEnding (char c) {
     // You may want to add ';' to this at some point,
     // or you may want to find a different way to implement chains.
-    return c == '\0' || c == '\n' || isspace(c) || c == ';';
+    return c == '\0' || c == '\n' || isspace (c) || c == ';';
 }
 
-int parseInput(const char inp[]) {
-    char tmp[200], *words[100];                            
+int parseInput (const char inp[]) {
+    char tmp[200], *words[100];
     int ix = 0, w = 0;
     int wordlen;
     int errorCode = 0;
@@ -75,22 +76,24 @@ int parseInput(const char inp[]) {
 
     while (inp[ix] != '\n' && inp[ix] != '\0' && ix < 1000) {
         // skip white spaces
-        for ( ; isspace(inp[ix]) && inp[ix] != '\n' && ix < 1000; ix++);
+        for (; isspace (inp[ix]) && inp[ix] != '\n' && ix < 1000; ix++);
 
         // If the next character is a semicolon,
         // we should run what we have so far.
-        if (inp[ix] == ';') break;
+        if (inp[ix] == ';')
+            break;
 
         // extract a word
-        for (wordlen = 0; !wordEnding(inp[ix]) && ix < 1000; ix++, wordlen++) {
+        for (wordlen = 0; !wordEnding (inp[ix]) && ix < 1000; ix++, wordlen++) {
             tmp[wordlen] = inp[ix];
         }
 
         if (wordlen > 0) {
             tmp[wordlen] = '\0';
-            words[w] = strdup(tmp);
+            words[w] = strdup (tmp);
             w++;
-            if (inp[ix] == '\0') break;
+            if (inp[ix] == '\0')
+                break;
         } else {
             break;
         }
@@ -99,10 +102,10 @@ int parseInput(const char inp[]) {
     // Otherwise the command is blank and we should do nothing.
     if (w > 0) {
         // run the command
-        errorCode = interpreter(words, w);
+        errorCode = interpreter (words, w);
         // cleanup all the words we parsed
         for (size_t i = 0; i < w; ++i) {
-            free(words[i]);
+            free (words[i]);
         }
     }
     if (inp[ix] == ';') {
@@ -112,7 +115,7 @@ int parseInput(const char inp[]) {
         // Additionally, a modern compiler is more than smart enough to
         // turn this into a loop for us! Try adding -O2 to the CFLAGS in
         // the Makefile and then read the assembly we get.
-        return parseInput(&inp[ix+1]);
+        return parseInput (&inp[ix + 1]);
     }
     return errorCode;
 }

@@ -64,9 +64,9 @@ size_t next_free_line = 0;
 // program might not fit in the first hole! So we provide a function to reset
 // this, which should be called whenever `exec` is called and we're not in
 // 'background mode.'
-void reset_linememory_allocator() {
+void reset_linememory_allocator () {
     next_free_line = 0;
-    assert_linememory_is_empty();
+    assert_linememory_is_empty ();
 }
 
 // The comments above detail an important, nontrivial invariant, that the
@@ -74,49 +74,49 @@ void reset_linememory_allocator() {
 // For sanity checking, we provide an additional function to assert that the
 // the linememory is empty.
 
-void assert_linememory_is_empty() {
+void assert_linememory_is_empty () {
     for (size_t i = 0; i < MEM_SIZE; ++i) {
-        assert(!linememory[i].allocated);
-        assert(linememory[i].line == NULL);
+        assert (!linememory[i].allocated);
+        assert (linememory[i].line == NULL);
     }
 }
 
 // note that init_linemem is not exposed from the header.
 // We made init_mem call init_linemem, down below.
-void init_linemem() {
+void init_linemem () {
     for (size_t i = 0; i < MEM_SIZE; ++i) {
         linememory[i].allocated = false;
         linememory[i].line = NULL;
     }
 }
 
-size_t allocate_line(const char *line) {
+size_t allocate_line (const char *line) {
     if (next_free_line >= MEM_SIZE) {
         // out of memory!
-        return (size_t)(-1);
+        return (size_t) (-1);
     }
     size_t index = next_free_line++;
-    assert(!linememory[index].allocated);
+    assert (!linememory[index].allocated);
 
     linememory[index].allocated = true;
     // As described above, the allocator is only borrowing the string passed to it,
     // but linememory must own all strings it contains, so we need to copy the
     // string. (If you don't know what that means, see [Note: OBS].)
-    linememory[index].line = strdup(line);
+    linememory[index].line = strdup (line);
     return index;
 }
 
 // To free a line, we must deallocate it and mark it unused.
 // We don't mess with next_free_line for the reasons described above.
-void free_line(size_t index) {
-    free(linememory[index].line);
+void free_line (size_t index) {
+    free (linememory[index].line);
     linememory[index].allocated = false;
     linememory[index].line = NULL;
 }
 
 // Return a const pointer to ensure the caller doesn't do something horrific,
 // like try to free it.
-const char *get_line(size_t index) {
+const char *get_line (size_t index) {
     if (index >= FRAME_STORE_SIZE) {
         return NULL;
     }
@@ -149,14 +149,16 @@ struct memory_struct {
 struct memory_struct shellmemory[MEM_SIZE];
 
 // Helper functions
-int match(char *model, char *var) {
-    int i, len = strlen(var), matchCount = 0;
+int match (char *model, char *var) {
+    int i, len = strlen (var), matchCount = 0;
     for (i = 0; i < len; i++) {
-        if (model[i] == var[i]) matchCount++;
+        if (model[i] == var[i])
+            matchCount++;
     }
     if (matchCount == len) {
         return 1;
-    } else return 0;
+    } else
+        return 0;
 }
 
 // Shell memory functions
@@ -164,17 +166,17 @@ int match(char *model, char *var) {
 struct frame_user **frame_users;
 int *num_users_per_frame;
 
-void init_frame_store(int framesize) {
+void init_frame_store (int framesize) {
     FRAME_STORE_SIZE = framesize;
     int num_frames = FRAME_STORE_SIZE / FRAME_SIZE;
-    
-    frame_allocation_table = malloc(num_frames * sizeof(int));
-    frame_users = malloc(num_frames * sizeof(struct frame_user *));
-    num_users_per_frame = malloc(num_frames * sizeof(int));
-    
-    last_used = malloc(num_frames * sizeof(size_t));
+
+    frame_allocation_table = malloc (num_frames * sizeof (int));
+    frame_users = malloc (num_frames * sizeof (struct frame_user *));
+    num_users_per_frame = malloc (num_frames * sizeof (int));
+
+    last_used = malloc (num_frames * sizeof (size_t));
     time_counter = 0;
-    
+
     for (int i = 0; i < num_frames; i++) {
         frame_allocation_table[i] = 0;
         frame_users[i] = NULL;
@@ -183,7 +185,7 @@ void init_frame_store(int framesize) {
     }
 }
 
-size_t select_victim_frame(void) {
+size_t select_victim_frame (void) {
     size_t num_frames = FRAME_STORE_SIZE / FRAME_SIZE;
     size_t lru_frame = 0;
     size_t min_time = UINT64_MAX;
@@ -196,7 +198,7 @@ size_t select_victim_frame(void) {
     return lru_frame;
 }
 
-size_t find_free_frame() {
+size_t find_free_frame () {
     int num_frames = FRAME_STORE_SIZE / FRAME_SIZE;
     for (size_t i = 0; i < num_frames; i++) {
         if (frame_allocation_table[i] == 0) {
@@ -204,69 +206,69 @@ size_t find_free_frame() {
             return i;
         }
     }
-    return (size_t)(-1);
+    return (size_t) (-1);
 }
 
-void free_frame(size_t frame_num) {
+void free_frame (size_t frame_num) {
     frame_allocation_table[frame_num] = 0;
 }
 
-size_t allocate_line_at(size_t index, const char *line) {
+size_t allocate_line_at (size_t index, const char *line) {
     if (index >= MEM_SIZE) {
-        return (size_t)(-1);
+        return (size_t) (-1);
     }
-    
+
     if (linememory[index].allocated) {
-        free(linememory[index].line);
+        free (linememory[index].line);
     }
-    
+
     linememory[index].allocated = true;
-    linememory[index].line = strdup(line);
+    linememory[index].line = strdup (line);
     return index;
 }
 
-void mem_init() {
+void mem_init () {
     int i;
     for (i = 0; i < MEM_SIZE; i++) {
         shellmemory[i].var = "none\1";
         shellmemory[i].value = "none";
     }
-    
-    init_linemem();
+
+    init_linemem ();
 }
 
 // Set key value pair
-void mem_set_value(char *var_in, char *value_in) {
+void mem_set_value (char *var_in, char *value_in) {
     int i;
 
     for (i = 0; i < MEM_SIZE; i++) {
-        if (strcmp(shellmemory[i].var, var_in) == 0) {
-            free(shellmemory[i].value);
-            shellmemory[i].value = strdup(value_in);
+        if (strcmp (shellmemory[i].var, var_in) == 0) {
+            free (shellmemory[i].value);
+            shellmemory[i].value = strdup (value_in);
             return;
-        } 
+        }
     }
 
     //Value does not exist, need to find a free spot.
     for (i = 0; i < MEM_SIZE; i++) {
-        if (strcmp(shellmemory[i].var, "none\1") == 0) {
-            shellmemory[i].var   = strdup(var_in);
-            shellmemory[i].value = strdup(value_in);
+        if (strcmp (shellmemory[i].var, "none\1") == 0) {
+            shellmemory[i].var = strdup (var_in);
+            shellmemory[i].value = strdup (value_in);
             return;
-        } 
+        }
     }
 
     return;
 }
 
 //get value based on input key
-char *mem_get_value(char *var_in) {
+char *mem_get_value (char *var_in) {
     int i;
 
     for (i = 0; i < MEM_SIZE; i++) {
-        if (strcmp(shellmemory[i].var, var_in) == 0){
-            return strdup(shellmemory[i].value);
-        } 
+        if (strcmp (shellmemory[i].var, var_in) == 0) {
+            return strdup (shellmemory[i].value);
+        }
     }
     return NULL;
 }

@@ -1,11 +1,27 @@
 CC = gcc
 CFLAGS = -O2
 
-mysh: shell.o interpreter.o shellmemory.o pcb.o queue.o schedule_policy.o
-	$(CC) $(CFLAGS) -o $@ $^
+FMT = indent 
 
-%.o: %.c
-	$(CC) $(CFLAGS) -DFRAMESIZE=$(framesize) -DVARMEMSIZE=$(varmemsize) -c $<
+SOURCES = $(wildcard *.c)
+HEADERS = $(wildcard *.h)
+FILES_TO_FORMAT = $(SOURCES) $(HEADERS)
+
+OBJECTS = $(SOURCES:.c=.o)
+
+all: mysh
+
+mysh: $(OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $^
+	
+%.o: %.c $(HEADERS)
+	$(CC) $(CFLAGS) -DFRAMESIZE=$(framesize) -DVARMEMSIZE=$(varmemsize) -c $< -o $@
+
+style:
+	$(FMT) $(FMT_OPTIONS) $(FILES_TO_FORMAT)
 
 clean:
-	rm -f mysh *.o
+	rm -f mysh $(OBJECTS) *~ .*.swp # Remove executable, objects, backups, swap files
+
+.PHONY: all style clean
+

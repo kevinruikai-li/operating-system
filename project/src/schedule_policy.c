@@ -7,16 +7,15 @@
     return run_pcb_for_n_steps(pcb, n);              \
   }
 
-MAKE_PREEMPTIVE_FN(1)
-MAKE_PREEMPTIVE_FN(2)
-MAKE_PREEMPTIVE_FN(30)
-
-const struct schedule_policy FCFS = {
-    .run_pcb = run_pcb_to_completion,
-    .enqueue = enqueue_fcfs,
-    .dequeue = dequeue_typical,
-    .enqueue_ignoring_priority = enqueue_ignoring_priority
-};
+MAKE_PREEMPTIVE_FN (1)
+    MAKE_PREEMPTIVE_FN (2)
+    MAKE_PREEMPTIVE_FN (30)
+     const struct schedule_policy FCFS = {
+         .run_pcb = run_pcb_to_completion,
+         .enqueue = enqueue_fcfs,
+         .dequeue = dequeue_typical,
+         .enqueue_ignoring_priority = enqueue_ignoring_priority
+     };
 
 const struct schedule_policy SJF = {
     .run_pcb = run_pcb_to_completion,
@@ -46,12 +45,17 @@ const struct schedule_policy AGING = {
     .enqueue_ignoring_priority = enqueue_ignoring_priority
 };
 
-const struct schedule_policy *get_policy(const char *policy_name) {
-    if (strcmp(policy_name, "FCFS")  == 0) return &FCFS;
-    if (strcmp(policy_name, "SJF")   == 0) return &SJF;
-    if (strcmp(policy_name, "RR")    == 0) return &RR;
-    if (strcmp(policy_name, "RR30")  == 0) return &RR30;
-    if (strcmp(policy_name, "AGING") == 0) return &AGING;
+const struct schedule_policy *get_policy (const char *policy_name) {
+    if (strcmp (policy_name, "FCFS") == 0)
+        return &FCFS;
+    if (strcmp (policy_name, "SJF") == 0)
+        return &SJF;
+    if (strcmp (policy_name, "RR") == 0)
+        return &RR;
+    if (strcmp (policy_name, "RR30") == 0)
+        return &RR30;
+    if (strcmp (policy_name, "AGING") == 0)
+        return &AGING;
 
     return NULL;
 }

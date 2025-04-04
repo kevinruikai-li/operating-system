@@ -1,6 +1,6 @@
 #pragma once
 #include <stddef.h>
-#include <stdio.h> // FILE
+#include <stdio.h>              // FILE
 #include "queue.h"
 
 typedef size_t pid;
@@ -62,25 +62,27 @@ struct PCB {
 };
 
 // Returns non-zero iff there are more instructions to execute.
-int pcb_has_next_instruction(struct PCB *pcb);
+int pcb_has_next_instruction (struct PCB *pcb);
 // Get the shellmemory index of the next instruction, and increment pc.
-size_t pcb_next_instruction(struct PCB *pcb);
+size_t pcb_next_instruction (struct PCB *pcb);
 // Create a new process from the given filename:
 //   1. Allocates a new PCB
 //   2. Loads the code from the script file into shellmemory
 //   3. Does NOT enqueue the PCB to any scheduling queue (next is NULL)
-struct PCB *create_process(const char *filename, struct queue *q, int process_exists);
+struct PCB *create_process (const char *filename, struct queue *q,
+                            int process_exists);
 // Like create_process, but takes a FILE* directly.
 // Ownership of the FILE* is taken and it will be closed.
-struct PCB *create_process_from_FILE(FILE *script, const char *filename, struct queue *q, int process_exists);
+struct PCB *create_process_from_FILE (FILE * script, const char *filename,
+                                      struct queue *q, int process_exists);
 // Cleanup a process:
 //   1. Free all shellmemory used by the process code
 //   2. Free the PCB
-void free_pcb(struct PCB *pcb);
+void free_pcb (struct PCB *pcb);
 
-struct PCB *find_existing_process(struct queue *q, const char *filename);
+struct PCB *find_existing_process (struct queue *q, const char *filename);
 
-void register_frame_user(size_t frame, struct PCB *pcb, size_t page);
-void invalidate_frame_users(size_t frame);
-size_t select_victim_frame(void);
-void load_page(struct PCB *pcb, size_t page_num, size_t frame);
+void register_frame_user (size_t frame, struct PCB *pcb, size_t page);
+void invalidate_frame_users (size_t frame);
+size_t select_victim_frame (void);
+void load_page (struct PCB *pcb, size_t page_num, size_t frame);
