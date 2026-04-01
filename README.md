@@ -2,8 +2,9 @@
 
 Krasimir Kirov 261118503, Kevin Li 261120382
 
-Used the starter code from A1/starter-code
+This operating system includes:
+- OS Shell
+- Multi-Process Scheduling
+- Memory Management
 
-Used the starter code from multithread/starter-code
-
-Used the solution code from A2 for A3
+Also includes a separate implementation of a Multi-Threaded Synchronized Queue.
